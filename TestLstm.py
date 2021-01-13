@@ -1,9 +1,7 @@
-#-*- coding:utf-8 -*-
 import numpy as np
-# simport matplotlib.pyplot as plt
-# import pandas as pd
 from torch import nn
 import torch
+import matplotlib.pyplot as plt
 from torch.autograd import Variable
 
 """
@@ -20,27 +18,27 @@ STEP2
 # 导入数据并可视化
 # data_csv = pd.read_csv('W_data.csv',usecols=[0])
 # data_csv = pd.read_csv('W_data_oneday.csv',usecols=[0])
-data_csv1 = np.loadtxt("W_data.csv", delimiter=" ")
+data_csv1 = np.loadtxt("lstm_test.txt", delimiter=" ")
 # plt.plot(data_csv)
 # plt.show()
 # print(type(data_csv))
 # plt.plot(data_csv)
 
 # 数据预处理(去除无效数据)
-dataset = data_csv1.astype('float32') # è½¬æ¢æ•°æ®ç±»åž‹ï¼Œå…¨éƒ¨è½¬æ¢æˆfloat32ä½
-data_csv2 = dataset[1:,np.newaxis]
+dataset = data_csv1.astype('float32')  # è½¬æ¢æ•°æ®ç±»åž‹ï¼Œå…¨éƒ¨è½¬æ¢æˆfloat32ä½
+data_csv2 = dataset[1:, np.newaxis]
 # print(type(dataset))
 
 # 归一化处理，之前的归一化处理是归一化到0-1上，现在想试一下归一化到更大范围内的情况。
 max_value = np.max(dataset)
 min_value = np.min(dataset)
-mu = np.mean(dataset,axis=0)
-std = np.std(dataset,axis=0)
+mu = np.mean(dataset, axis=0)
+std = np.std(dataset, axis=0)
 scalar = max_value - min_value
 # 除最大值法归一化
 # dataset = list(map(lambda x : x / scalar, data_csv2))  # 归一化处理
 # MinMaxScaler法
-dataset = list(map(lambda x : (x - min_value) / (max_value - min_value), data_csv2))
+dataset = list(map(lambda x: (x - min_value) / (max_value - min_value), data_csv2))
 # 均值归一化
 # dataset = list(map(lambda x : (x - mu) / std, data_csv2))
 # 缩放到特定区域,[0-10]
@@ -50,14 +48,15 @@ dataset = list(map(lambda x : (x - min_value) / (max_value - min_value), data_cs
 BATCH_SIZE = 144
 HIDDEN_SIZE = 128
 
+
 # 设置数据集(考虑滑动窗口即batch_size，所以新构造的数据集长度必定为原长-batch_size
 #           ，然后这边X,Y分别是输出值，输出值，根据X来求Y，因为是训练集，所以Y告诉你)
-def create_dataset(dataset, loop_back = BATCH_SIZE):
+def create_dataset(dataset, loop_back=BATCH_SIZE):
     dataX, dataY = [], []
-    for i in range(len(dataset) - loop_back ):
-        a = dataset[i:(i+loop_back)]    # 这边的话，因为切片是不包含的末尾位的，所以a是两个数据组成
+    for i in range(len(dataset) - loop_back):
+        a = dataset[i:(i + loop_back)]  # 这边的话，因为切片是不包含的末尾位的，所以a是两个数据组成
         dataX.append(a)
-        dataY.append(dataset[i+loop_back])
+        dataY.append(dataset[i + loop_back])
     return np.array(dataX), np.array(dataY)
 
 
@@ -66,19 +65,17 @@ def create_dataset(dataset, loop_back = BATCH_SIZE):
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 data_X, data_Y = create_dataset(dataset)
 
-
 # 设置训练集和测试集
 # 划分训练集和测试机，其中70%作为训练集，30%位测试集，用切片来实现
 # train部分，Y是给喂的数据，以便调整参数，test部分Y是用来验证正确率的
 # 这边的数据集是一个三维数组
 # 前三个数据集是要放到网络里的，最后一个是用于验证的
-train_size = int(len(data_X)*0.8)
+train_size = int(len(data_X) * 0.96)
 test_size = len(data_X) - train_size
 train_X = data_X[:train_size]
 train_Y = data_Y[:train_size]
 test_X = data_X[train_size:]
 test_Y = data_Y[train_size:]
-
 
 # 设置LSTM模型数据及状态(格式统一化)
 # 让数据集变成仅一列，且z轴为2(batch_size)的数据结构，为了和LSTM的结构匹配
@@ -109,9 +106,10 @@ class lstm(nn.Module):
     这些内容需要数据与之匹配，根据前面的知识可知，我们的数据集需要设置成对应的大小即
     这边的话层数设置为2，一层是LSTM，另一层是简单的线形层
     """
+
     def __init__(self, input_size=BATCH_SIZE, hidden_size=HIDDEN_SIZE,
-                 output_size=1,num_layer=2):
-        super(lstm,self).__init__()
+                 output_size=1, num_layer=2):
+        super(lstm, self).__init__()
         # 当我们的LSTM网络要求输入是2，隐藏层是4，层数为2，输出为1时
         # 我们的输入输出格式是：
         # train_X: 99,1,2
@@ -119,33 +117,34 @@ class lstm(nn.Module):
         # test_X:  43,1,2
         # 也就是说第一个参数是指元素的个数，不需要和LSTM中匹配，然后后面开始要和LSTM匹配
 
-        self.layer1 = nn.LSTM(input_size,hidden_size,num_layer)   # 2 4 2
+        self.layer1 = nn.LSTM(input_size, hidden_size, num_layer)  # 2 4 2
         self.layer2 = nn.Sequential(
-            nn.Linear(hidden_size,hidden_size),
+            nn.Linear(hidden_size, hidden_size),
             nn.Tanh(),
-            nn.Linear(hidden_size, output_size), # 线性层 4 1
+            nn.Linear(hidden_size, output_size),  # 线性层 4 1
         )
+
     # 前向传播
     # 要注意的是这边输出的几个参数的size是什么样的
     # 然后view在这边的作用是：
-    def forward(self,x):
-        x,_ = self.layer1(x)  #
-        s,b,h = x.size()      # 99 1 4 应该是说输入的x从9912 变成了 9914
-        x = x.view(s*b, h)    # 为了通过线性层，将x的格式改成了99，4 说明4是输入需要
+    def forward(self, x):
+        x, _ = self.layer1(x)  #
+        s, b, h = x.size()  # 99 1 4 应该是说输入的x从9912 变成了 9914
+        x = x.view(s * b, h)  # 为了通过线性层，将x的格式改成了99，4 说明4是输入需要
         # print(x.shape)
-        x = self.layer2(x)    # 通过线性层得到的结果是： 99 1 是线性层的作用吧 输入4 输出1
+        x = self.layer2(x)  # 通过线性层得到的结果是： 99 1 是线性层的作用吧 输入4 输出1
         # print(x.shape)
-        x = x.view(s,b,-1)    # 这边把格式转换成：扩维了 99 1 1 和train_Y保持一致
+        x = x.view(s, b, -1)  # 这边把格式转换成：扩维了 99 1 1 和train_Y保持一致
         # print(x.shape)
         return x
+
 
 # TODO CUDA
 # model = lstm(BATCH_SIZE, 8, 1, 2)
 model = lstm(BATCH_SIZE, HIDDEN_SIZE, 1, 2).to(device)  # 输入为2，隐藏层为4，输出为1，层数为2，这边和输入有对应
 
-
 # 建立损失函数和优化器
-#TODO CUDA
+# TODO CUDA
 # criterion = nn.MSELoss()
 criterion = nn.MSELoss().to(device)
 
@@ -154,7 +153,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 # var_x = torch.tensor(train_x, dtype=torch.float32, device=device)
 # var_y = torch.tensor(train_y, dtype=torch.float32, device=device)
-#TODO CUDA
+# TODO CUDA
 var_x = Variable(train_x).to(device)
 # var_x = var_x
 var_y = Variable(train_y).to(device)
@@ -163,8 +162,8 @@ var_y = Variable(train_y).to(device)
 for e in range(2000):
     # var_x,var_y的格式应该和train_x,y 一样，都是9912 9911
     # 前向传播
-    out = model(var_x) # 这边的out应该是model下训练出来的output
-    loss = criterion(out, var_y) # 这是一个内部函数，只需要把两个要比较的张量放进去就行了
+    out = model(var_x)  # 这边的out应该是model下训练出来的output
+    loss = criterion(out, var_y)  # 这是一个内部函数，只需要把两个要比较的张量放进去就行了
     # 反向传播
     # 在反向传播的地方进行优化
     optimizer.zero_grad()
@@ -200,7 +199,7 @@ print('load successfully!')
 # model = model.eval()
 # model = model.eval().to(device) # 转换成测试模式
 # 我们考虑的test_x放进去 然后进行结果预测
-#TODO CUDA
+# TODO CUDA
 var_test_x = Variable(test_x).to(device)
 var_test_y = Variable(test_y).to(device)
 # var_test_x = Variable(test_x)
@@ -211,7 +210,7 @@ var_test_y = Variable(test_y).to(device)
 # var_data = Variable(data_X)     # variable相当于是一个装tensor的存储空间，应该有其他默认参数的
 #                                 # variable有一个非常大的作用，即反向误差传递的时候可以比tensor要快非常多
 # TODO CUDA
-pred_test = model1(var_test_x).to(device) # 测试集的预测结果
+pred_test = model1(var_test_x).to(device)  # 测试集的预测结果
 # # 改变输出的格式，即从variable形式转换为numpy or tensor类型
 # pred_test = pred_test.view(-1).data.numpy()
 loss1 = criterion(pred_test, var_test_y)
@@ -221,11 +220,10 @@ print('Loss: {:.5f}'.format(loss1.data))
 running_correct = 0
 # wucha = float(20) / scalar
 for i in range(var_test_y.size(0)):
-    if (abs((pred_test[i] - var_test_y[i])/var_test_y[i])< 0.05):
+    if (abs((pred_test[i] - var_test_y[i]) / var_test_y[i]) < 0.05):
         running_correct += 1
 
 print(running_correct)
-
 
 # 6428/9617=66.84(3435--B=12,H=12)
 # 6649/9605=69.2(3536--B=72,H=12)
@@ -252,34 +250,6 @@ print(running_correct)
 # 新改了的地方是归一化的地方，总感觉归一化到太小了以后，容易出现一些其他问题
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # 差0.05的话，只有8818/9562==92.21   6045/9562==63.21(net)
 # 6428/9617=66.84(3435) 6649/9605=69.2   6706/9591=69.9 再试一次 然后考虑网络方面的
 # 开始考虑hidden size 然后结合batch size一起变化看一下
@@ -290,18 +260,17 @@ print(running_correct)
 # plt.title('Result Analysis')
 
 
-# pred_T_t = pred_test[:,0]
-# pred_N = pred_T_t.data.numpy()
-# var_test_y_T = var_test_y[:,0]
-# var_test_y_N = var_test_y_T.data.numpy()
-# plt.plot(var_test_y_N, 'r', label='real')
-# plt.plot(pred_N, 'b', label='pred')
-# plt.savefig("test.png",dpi=300)s
+pred_T_t = pred_test[:, 0]
+pred_N = pred_T_t.data.cpu().numpy()
+var_test_y_T = var_test_y[:, 0]
+var_test_y_N = var_test_y_T.data.cpu().numpy()
+plt.plot(var_test_y_N, 'r', label='real')
+plt.plot(pred_N, 'b', label='pred')
+plt.savefig("test.png", dpi=300)
 
-
-# plt.xlabel('number')
-# plt.ylabel('value')
-# plt.show()
+plt.xlabel('number')
+plt.ylabel('value')
+plt.show()
 # plt.legend(loc='best')
 # plt.plot(pred_y, 'r', label='pred')
 # plot里面的alpha作用是
@@ -310,6 +279,3 @@ print(running_correct)
 # plt.legend(loc='best')
 # plt.savefig('lstm_reg.png')
 # plt.pause(4)
-
-
-
