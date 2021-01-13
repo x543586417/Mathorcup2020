@@ -15,12 +15,6 @@ down_tr_day = np.zeros((cell_n, Day_n))
 upload = []  # 连续时间的列表
 download = []
 
-# for i in range(1, cell_n + 1):
-#     temp_up = df['Upload'][df['Cell_num'] == i].tolist()
-#     temp_down = df['Download'][df['Cell_num'] == i].tolist()
-#
-#     upload.append(temp_up)
-#     download.append(temp_down)
 for i in df['Cell_num'].unique():   # 每个基站的流量转换为list（基站编号从1开始）
     temp_up = df[df['Cell_num'] == i]
     temp_down = df[df['Cell_num'] == i]
