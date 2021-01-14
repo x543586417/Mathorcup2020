@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+#######暂时使用ACF_PACF的方法#################
+
 #法1
 def autocorrelation(x, lags):
     # 计算lags阶以内的自相关系数，返回lags个值，分别计算序列均值，标准差
