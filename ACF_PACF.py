@@ -2,7 +2,7 @@ from statsmodels.tsa.stattools import acf, pacf
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import matplotlib.pyplot as plt
 import pandas as pd
-
+#数据集
 df = pd.read_csv('https://raw.githubusercontent.com/selva86/datasets/master/a10.csv')
 # Calculate ACF and PACF upto 50 lags# acf_50 = acf(df.value, nlags=50)# pacf_50 = pacf(df.value, nlags=50)
 # Draw Plot
